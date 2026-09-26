@@ -1,0 +1,83 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        buildtype: [release, debug]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            g++ \
+            libboost-dev \
+            libicu-dev \
+            librevenge-dev \
+            librevenge-generators-dev \
+            librevenge-stream-dev \
+            zlib1g-dev \
+            meson \
+            ninja-build
+
+      - name: Configure
+        run: meson setup builddir -Dwerror=true --buildtype=${{ matrix.buildtype }}
+        env:
+          CXX: ${{ matrix.compiler }}
+
+      - name: Build
+        run: ninja -C builddir
+
+      - name: Smoke test
+        run: |
+          echo "=== pub2raw version ==="
+          ./builddir/src/conv/raw/pub2raw --version
+          echo "=== pub2xhtml version ==="
+          ./builddir/src/conv/svg/pub2xhtml --version
+          echo "=== isSupported on non-pub file ==="
+          printf 'not a publisher file' > /tmp/notapub.pub
+          if ./builddir/src/conv/raw/pub2raw /tmp/notapub.pub > /dev/null 2>&1; then
+            echo "ERROR: pub2raw unexpectedly succeeded on invalid input"
+            exit 1
+          else
+            echo "OK: pub2raw correctly rejected invalid input"
+          fi
+
+  linux-fuzzers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            libboost-dev \
+            libicu-dev \
+            librevenge-dev \
+            librevenge-generators-dev \
+            librevenge-stream-dev \
+            zlib1g-dev \
+            meson \
+            ninja-build
+
+      - name: Configure fuzzers
+        run: meson setup builddir -Dfuzzers=true
+        env:
+          CXX: clang++
+
+      - name: Check configuration
+        run: meson configure builddir | grep -E "fuzzers|tools"
