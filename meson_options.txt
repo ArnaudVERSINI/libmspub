@@ -1,0 +1,20 @@
+option(
+  'tools',
+  type: 'boolean',
+  value: true,
+  description: 'Build conversion tools (pub2raw, pub2xhtml)',
+)
+
+option(
+  'fuzzers',
+  type: 'boolean',
+  value: false,
+  description: 'Build fuzzer(s)',
+)
+
+option(
+  'docs',
+  type: 'boolean',
+  value: true,
+  description: 'Build documentation',
+)
